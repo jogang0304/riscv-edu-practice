@@ -1,11 +1,14 @@
 a.out
-buildroot
 demo_races/pagemap
 dl
 gef
-linux
-opensbi
 output
 rootfs_overlay
 qemu
 qemu_build
+opensbiMy
+linuxMy
+linux
+opensbi
+linux.tar.xz
+buildroot
