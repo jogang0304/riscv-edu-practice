@@ -11,6 +11,7 @@ ${CROSS_COMPILE}gcc -O2 -g demo_races/small.c -o $ROOTFS_OVERLAY/opt/small
 ${CROSS_COMPILE}gcc -O0 -g demo_races/small.c -o $ROOTFS_OVERLAY/opt/small_no_opt
 ${CROSS_COMPILE}gcc -O2 -g -fno-stack-protector demo_races/memset.c -o $ROOTFS_OVERLAY/opt/memset
 ${CROSS_COMPILE}gcc -O2 -g -fno-stack-protector demo_races/alloc.c -o $ROOTFS_OVERLAY/opt/alloc
+${CROSS_COMPILE}gcc -O2 -g -fno-stack-protector demo_races/my_ecall.c -o $ROOTFS_OVERLAY/opt/my_ecall
 
 cp --preserve=mode demo_races/gdbs.sh $ROOTFS_OVERLAY/opt
 mkdir -p $ROOTFS_OVERLAY/etc/profile.d

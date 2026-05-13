@@ -1,0 +1,120 @@
+--- linux2/arch/riscv/include/asm/kvm_vcpu_sbi.h	2026-05-12 19:36:44.369733674 +0300
++++ linuxMy/arch/riscv/include/asm/kvm_vcpu_sbi.h	2026-05-12 18:49:11.408250305 +0300
+@@ -111,6 +111,8 @@
+ extern const struct kvm_vcpu_sbi_extension vcpu_sbi_ext_experimental;
+ extern const struct kvm_vcpu_sbi_extension vcpu_sbi_ext_vendor;
+ 
++// extern const struct kvm_vcpu_sbi_extension vcpu_sbi_ext_mcycle;
++
+ #ifdef CONFIG_RISCV_PMU_SBI
+ extern const struct kvm_vcpu_sbi_extension vcpu_sbi_ext_pmu;
+ #endif
+--- linux2/arch/riscv/include/asm/sbi.h	2026-05-12 19:36:44.371733713 +0300
++++ linuxMy/arch/riscv/include/asm/sbi.h	2026-04-29 20:27:09.917988495 +0300
+@@ -39,6 +39,8 @@
+ 	SBI_EXT_MPXY = 0x4D505859,
+ 	SBI_EXT_DBTR = 0x44425452,
+ 
++	SBI_EXT_MCYCLE = 0x09ABCDEF,
++
+ 	/* Experimentals extensions must lie within this range */
+ 	SBI_EXT_EXPERIMENTAL_START = 0x08000000,
+ 	SBI_EXT_EXPERIMENTAL_END = 0x08FFFFFF,
+--- linux2/arch/riscv/include/uapi/asm/kvm.h	2026-05-12 19:36:44.378764070 +0300
++++ linuxMy/arch/riscv/include/uapi/asm/kvm.h	2026-04-29 19:28:16.216570057 +0300
+@@ -215,6 +215,8 @@
+ 	KVM_RISCV_SBI_EXT_FWFT,
+ 	KVM_RISCV_SBI_EXT_MPXY,
+ 	KVM_RISCV_SBI_EXT_MAX,
++
++	KVM_RISCV_SBI_EXT_MCYCLE,
+ };
+ 
+ /* SBI STA extension registers for KVM_GET_ONE_REG and KVM_SET_ONE_REG */
+--- linux2/tools/include/uapi/asm-generic/unistd.h	2026-05-12 19:36:52.421892869 +0300
++++ linuxMy/tools/include/uapi/asm-generic/unistd.h	2026-04-29 20:16:08.987830454 +0300
+@@ -860,8 +860,12 @@
+ #define __NR_listns 470
+ __SYSCALL(__NR_listns, sys_listns)
+ 
++
++#define __NR_get_mcycle_from_sbi 471
++__SYSCALL(__NR_get_mcycle_from_sbi, sys_get_mcycle_from_sbi)
++
+ #undef __NR_syscalls
+-#define __NR_syscalls 471
++#define __NR_syscalls 472
+ 
+ /*
+  * 32 bit systems traditionally used different
+--- linux2/tools/scripts/syscall.tbl	2026-05-12 19:36:52.740511788 +0300
++++ linuxMy/tools/scripts/syscall.tbl	2026-05-05 22:22:56.318021668 +0300
+@@ -411,3 +411,4 @@
+ 468	common	file_getattr			sys_file_getattr
+ 469	common	file_setattr			sys_file_setattr
+ 470	common	listns				sys_listns
++471 common  get_mcycle_from_sbi sys_get_mcycle_from_sbi
+--- linux2/include/uapi/asm-generic/unistd.h	2026-05-12 20:02:22.684159204 +0300
++++ linuxMy/include/uapi/asm-generic/unistd.h	2026-04-29 20:16:40.528458818 +0300
+@@ -860,8 +860,11 @@
+ #define __NR_listns 470
+ __SYSCALL(__NR_listns, sys_listns)
+ 
++#define __NR_get_mcycle_from_sbi 471
++__SYSCALL(__NR_get_mcycle_from_sbi, sys_get_mcycle_from_sbi)
++
+ #undef __NR_syscalls
+-#define __NR_syscalls 471
++#define __NR_syscalls 472
+ 
+ /*
+  * 32 bit systems traditionally used different
+--- linux2/arch/riscv/kernel/get_mcycle_from_sbi.c	1970-01-01 03:00:00.000000000 +0300
++++ linuxMy/arch/riscv/kernel/get_mcycle_from_sbi.c	1970-01-01 03:00:00.000000000 +0300
+@@ -0,0 +1,19 @@
++#include <linux/syscalls.h>
++#include <asm/sbi.h>
++
++#define SBI_EXT_MCYCLE 0x09ABCDEF
++
++SYSCALL_DEFINE0(get_mcycle_from_sbi)
++{
++    printk(KERN_INFO "Running custom mcycle syscall\n");
++
++    struct sbiret ret;
++
++    ret = sbi_ecall(SBI_EXT_MCYCLE, 0, 0, 0, 0, 0, 0, 0);
++
++    if (ret.error) {
++        return -EFAULT;
++    }
++
++    return (long)ret.value;
++}
+--- linux/include/linux/syscalls.h	2026-04-22 14:30:53.000000000 +0300
++++ linuxWorking/include/linux/syscalls.h	2026-05-12 21:38:51.441586006 +0300
+@@ -304,6 +304,9 @@
+  * include the prototypes if CONFIG_ARCH_HAS_SYSCALL_WRAPPER is enabled.
+  */
+ #ifndef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
++
++asmlinkage long sys_get_mcycle_from_sbi();
++
+ asmlinkage long sys_io_setup(unsigned nr_reqs, aio_context_t __user *ctx);
+ asmlinkage long sys_io_destroy(aio_context_t ctx);
+ asmlinkage long sys_io_submit(aio_context_t, long,
+--- linux/arch/riscv/kernel/Makefile	2026-05-12 23:16:46.652976263 +0300
++++ linuxWorking/arch/riscv/kernel/Makefile	2026-05-12 22:35:21.832678918 +0300
+@@ -126,3 +126,5 @@
+ obj-$(CONFIG_ACPI_NUMA)	+= acpi_numa.o
+ 
+ obj-$(CONFIG_GENERIC_CPU_VULNERABILITIES) += bugs.o
++
++obj-y += get_mcycle_from_sbi.o
+--- linux/scripts/syscall.tbl	2026-05-12 23:16:50.148998332 +0300
++++ linuxWorking/scripts/syscall.tbl	2026-05-12 22:38:36.681540345 +0300
+@@ -411,3 +411,4 @@
+ 468	common	file_getattr			sys_file_getattr
+ 469	common	file_setattr			sys_file_setattr
+ 470	common	listns				sys_listns
++471 common  get_mcycle_from_sbi sys_get_mcycle_from_sbi
