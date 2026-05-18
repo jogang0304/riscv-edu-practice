@@ -12,3 +12,4 @@ linux
 opensbi
 linux.tar.xz
 buildroot
+*.out
